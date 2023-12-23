@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify, send_file
-import csv
-import io
+import pandas as pd
 import os
 import uuid
-from werkzeug.wsgi import FileWrapper
 
 app = Flask(__name__)
 
@@ -17,28 +15,24 @@ def json_to_csv():
         if not json_data:
             return jsonify({'error': 'No se recibieron datos JSON'}), 400
 
-        # Supongamos que el JSON es una lista de diccionarios con las mismas claves
-        # y queremos convertirlo a CSV
-        keys = json_data[0].keys() if json_data else []
-        
+        # Verificar si el JSON es una lista de diccionarios no vacía
+        if not isinstance(json_data, list) or not json_data:
+            return jsonify({'error': 'Se esperaba una lista no vacía de diccionarios'}), 400
+
+        # Crear un DataFrame de Pandas a partir de los datos JSON
+        df = pd.DataFrame(json_data)
+
         # Generar un nombre único para el archivo CSV
         unique_filename = f"datos_{str(uuid.uuid4())[:8]}.csv"
 
         # Ruta para guardar el archivo CSV temporalmente
         csv_file_path = unique_filename
 
-        # Generar el archivo CSV en disco
-        with open(csv_file_path, 'w', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=keys)
-
-            # Escribir encabezados
-            writer.writeheader()
-
-            # Escribir filas de datos
-            writer.writerows(json_data)
+        # Guardar el DataFrame como archivo CSV
+        df.to_csv(csv_file_path, index=False)
 
         # Devolver el enlace para descargar el archivo CSV
-        return jsonify({'success': True, 'csv_link': f"/download/{csv_file_path}"})
+        return jsonify({'success': True, 'csv_link': f"/download/{csv_file_path}", 'delete_link': f"/delete/{csv_file_path}"})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -48,15 +42,23 @@ def download(file_path):
         # Verificar si el archivo existe
         if os.path.exists(file_path):
             # Enviar el archivo para su descarga
-            with open(file_path, 'rb') as f:
-                wrapper = FileWrapper(f)
-                response = app.response_class(wrapper, mimetype='text/csv', direct_passthrough=True)
-                response.headers['Content-Disposition'] = f'attachment; filename={os.path.basename(file_path)}'
-
-            # Eliminar el archivo después de la descarga
-            os.remove(file_path)
-
+            response = send_file(file_path, as_attachment=True)
+            
             return response
+        else:
+            return jsonify({'error': 'El archivo no existe'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete/<path:file_path>', methods=['GET'])
+def delete_file(file_path):
+    try:
+        # Verificar si el archivo existe
+        if os.path.exists(file_path):
+            # Eliminar el archivo
+            os.remove(file_path)
+            
+            return jsonify({'success': True, 'message': 'Archivo eliminado correctamente'})
         else:
             return jsonify({'error': 'El archivo no existe'}), 404
     except Exception as e:
