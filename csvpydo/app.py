@@ -25,39 +25,48 @@ def json_to_csv():
         # Generar un nombre único para el archivo CSV
         unique_filename = f"datos_{str(uuid.uuid4())[:8]}.csv"
 
-        # Ruta para guardar el archivo CSV temporalmente
-        csv_file_path = unique_filename
+        # Ruta para guardar el archivo CSV en el directorio actual
+        csv_file_path = os.path.join(os.getcwd(), unique_filename)
 
         # Guardar el DataFrame como archivo CSV
         df.to_csv(csv_file_path, index=False)
 
-        # Devolver el enlace para descargar el archivo CSV
-        return jsonify({'success': True, 'csv_link': f"/download/{csv_file_path}", 'delete_link': f"/delete/{csv_file_path}"})
+        # Devolver los enlaces para generar, descargar y eliminar el archivo CSV
+        generate_link = f"/generate/{unique_filename}"
+        delete_link = f"/delete/{unique_filename}"
+
+        return jsonify({
+            'success': True,
+            'generate_link': generate_link,
+            'delete_link': delete_link
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download/<path:file_path>', methods=['GET'])
-def download(file_path):
+@app.route('/generate/<path:file_path>', methods=['GET'])
+def generate(file_path):
     try:
+        # Ruta completa al archivo CSV
+        csv_file_path = os.path.join(os.getcwd(), file_path)
+
         # Verificar si el archivo existe
-        if os.path.exists(file_path):
-            # Enviar el archivo para su descarga
-            response = send_file(file_path, as_attachment=True)
-            
-            return response
+        if os.path.exists(csv_file_path):
+            return send_file(csv_file_path, as_attachment=True)
         else:
             return jsonify({'error': 'El archivo no existe'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/delete/<path:file_path>', methods=['GET'])
-def delete_file(file_path):
+def delete(file_path):
     try:
+        # Ruta completa al archivo CSV
+        csv_file_path = os.path.join(os.getcwd(), file_path)
+
         # Verificar si el archivo existe
-        if os.path.exists(file_path):
+        if os.path.exists(csv_file_path):
             # Eliminar el archivo
-            os.remove(file_path)
-            
+            os.remove(csv_file_path)
             return jsonify({'success': True, 'message': 'Archivo eliminado correctamente'})
         else:
             return jsonify({'error': 'El archivo no existe'}), 404
