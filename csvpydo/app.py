@@ -5,9 +5,6 @@ import uuid
 
 app = Flask(__name__)
 
-# Mensaje de advertencia
-app.config['SERVER_NAME'] = 'production'
-
 @app.route('/convert', methods=['POST'])
 def json_to_csv():
     try:
@@ -77,6 +74,4 @@ def delete(file_path):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Obtener el puerto de la variable de entorno PORT o usar 5000 por defecto
-    app.run(host='0.0.0.0', port=port)  # Ejecutar la aplicación Flask con el host y puerto especificados
-
+    app.run(debug=True)
