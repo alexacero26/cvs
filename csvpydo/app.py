@@ -5,6 +5,13 @@ import uuid
 
 app = Flask(__name__)
 
+def add_cors_headers(response):
+    # Reemplaza '*' con el dominio específico si es conocido
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 @app.route('/convert', methods=['POST'])
 def json_to_csv():
     try:
@@ -35,43 +42,18 @@ def json_to_csv():
         generate_link = f"/generate/{unique_filename}"
         delete_link = f"/delete/{unique_filename}"
 
-        return jsonify({
+        response = jsonify({
             'success': True,
             'generate_link': generate_link,
             'delete_link': delete_link
         })
+
+        return add_cors_headers(response)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        return add_cors_headers(response), 500
 
-@app.route('/generate/<path:file_path>', methods=['GET'])
-def generate(file_path):
-    try:
-        # Ruta completa al archivo CSV
-        csv_file_path = os.path.join(os.getcwd(), file_path)
+# Resto del código...
 
-        # Verificar si el archivo existe
-        if os.path.exists(csv_file_path):
-            return send_file(csv_file_path, as_attachment=True)
-        else:
-            return jsonify({'error': 'El archivo no existe'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/delete/<path:file_path>', methods=['GET'])
-def delete(file_path):
-    try:
-        # Ruta completa al archivo CSV
-        csv_file_path = os.path.join(os.getcwd(), file_path)
-
-        # Verificar si el archivo existe
-        if os.path.exists(csv_file_path):
-            # Eliminar el archivo
-            os.remove(csv_file_path)
-            return jsonify({'success': True, 'message': 'Archivo eliminado correctamente'})
-        else:
-            return jsonify({'error': 'El archivo no existe'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
