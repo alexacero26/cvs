@@ -29,7 +29,8 @@ def json_to_csv():
                 generate_link = f"/generate/{unique_filename}"
                 delete_link = f"/delete/{unique_filename}"
 
-                success_links[key] = {
+                # Agregar los enlaces al diccionario success_links
+                success_links = {
                     'generate_link': generate_link,
                     'delete_link': delete_link
                 }
@@ -68,4 +69,3 @@ def delete(file_path):
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
