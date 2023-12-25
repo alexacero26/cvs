@@ -10,37 +10,33 @@ CORS(app)
 @app.route('/convert', methods=['POST'])
 def json_to_csv():
     try:
-        # Obtener los datos JSON del cuerpo de la solicitud
         json_data = request.get_json()
 
-        # Verificar si se recibieron datos
         if not json_data:
             return jsonify({'error': 'No se recibieron datos JSON'}), 400
 
-        # Verificar si el JSON es una lista de diccionarios no vacía
-        if not isinstance(json_data, list) or not json_data:
-            return jsonify({'error': 'Se esperaba una lista no vacía de diccionarios'}), 400
+        if not isinstance(json_data, dict):
+            return jsonify({'error': 'Se esperaba un JSON con claves de listas de productos'}), 400
 
-        # Crear un DataFrame de Pandas a partir de los datos JSON
-        df = pd.DataFrame(json_data)
+        success_links = {}
+        for key, value in json_data.items():
+            if isinstance(value, list):
+                df = pd.DataFrame(value)
+                unique_filename = f"{key}_{str(uuid.uuid4())[:8]}.csv"
+                csv_file_path = os.path.join(os.getcwd(), unique_filename)
+                df.to_csv(csv_file_path, index=False)
 
-        # Generar un nombre único para el archivo CSV
-        unique_filename = f"datos_{str(uuid.uuid4())[:8]}.csv"
+                generate_link = f"/generate/{unique_filename}"
+                delete_link = f"/delete/{unique_filename}"
 
-        # Ruta para guardar el archivo CSV en el directorio actual
-        csv_file_path = os.path.join(os.getcwd(), unique_filename)
-
-        # Guardar el DataFrame como archivo CSV
-        df.to_csv(csv_file_path, index=False)
-
-        # Devolver los enlaces para generar, descargar y eliminar el archivo CSV
-        generate_link = f"/generate/{unique_filename}"
-        delete_link = f"/delete/{unique_filename}"
+                success_links[key] = {
+                    'generate_link': generate_link,
+                    'delete_link': delete_link
+                }
 
         return jsonify({
             'success': True,
-            'generate_link': generate_link,
-            'delete_link': delete_link
+            'download_links': success_links
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -48,10 +44,8 @@ def json_to_csv():
 @app.route('/generate/<path:file_path>', methods=['GET'])
 def generate(file_path):
     try:
-        # Ruta completa al archivo CSV
         csv_file_path = os.path.join(os.getcwd(), file_path)
 
-        # Verificar si el archivo existe
         if os.path.exists(csv_file_path):
             return send_file(csv_file_path, as_attachment=True)
         else:
@@ -62,12 +56,9 @@ def generate(file_path):
 @app.route('/delete/<path:file_path>', methods=['GET'])
 def delete(file_path):
     try:
-        # Ruta completa al archivo CSV
         csv_file_path = os.path.join(os.getcwd(), file_path)
 
-        # Verificar si el archivo existe
         if os.path.exists(csv_file_path):
-            # Eliminar el archivo
             os.remove(csv_file_path)
             return jsonify({'success': True, 'message': 'Archivo eliminado correctamente'})
         else:
